@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    #legend 
+    {
+        position: absolute;
+        bottom: 5px;
+        left: 5px;
+        background-color: #fff;
+        padding: 10px;
+        border-radius: 50px;
+    }
+    .legend-item {
+        margin-bottom: 5px;
+    }
+
+    .legend-color {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        margin-right: 5px;
+    }
+</style>
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+
+
+<!-- Create an element where the map will take place -->
+<svg id="my_dataviz" width="800" height="800"></svg>
+<div id="legend">
+    <div class="legend-item">
+        <div class="legend-color" style="background-color: #D0E9F6;"></div> Between 0 and 1000
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background-color: #79C0EC;"></div> Between 1000 and 5000
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background-color: #79C0EC;"></div> Between 5000 and 10000
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background-color: #004C7A;"></div> Greater than 10000
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background-color: gray;"></div> Unavailable data
+    </div>
+</div>
+<div>
+    <input type="range" id="slider" min="0" max="1" step="1" value="0" oninput="sliderChanged()">
+    <label id="slider-label"></label>
+</div>
+
+<script>
+    
+    // The svg
+    var svg = d3.select("svg"),
+        width = +svg.attr("width"),
+        height = +svg.attr("height");
+
+    // Map and projection
+    var path = d3.geoPath();
+    var projection = d3.geoMercator()
+        .scale(120)
+        .center([0, 20])
+        .translate([width / 2, height / 2]);
+
+     // Load external data and boot
+    d3.queue()
+        .defer(d3.json, "https://enjalot.github.io/wwsd/data/world/world-110m.geojson")
+        .defer(d3.csv, "selected_data.csv")
+        .await(ready);
+
+    function ready(error, topo, data) {
+        if (error) throw error;
+
+        var dict_country = {};
+        data.forEach(function(d) {
+            var country = d["Country"].toLowerCase();
+            dict_country[country] = +d["Import"];
+        });
+
+         // Data and color scale
+        var max = d3.max(Object.values(dict_country));
+        var colorScale = d3.scaleThreshold()
+            .domain([0, 1000, 5000, 10000, max])
+            .range(["blue", "#D0E9F6", "#79C0EC", "#0072BC", "#004C7A"]);
+
+        // Draw the map
+        svg.append("g")
+            .selectAll("path")
+            .data(topo.features)
+            .enter().append("path")
+            // draw each country
+            .attr("d", path.projection(projection))
+            .attr("class", function(d) { return "Country"; })
+            .style("stroke", "transparent")
+            // set the color of each country
+            .style("fill", function(d) {
+                var import_export_val = dict_country[d.properties.name.toLowerCase()];
+                if (import_export_val !== undefined) {
+                    return colorScale(import_export_val);
+                } else {
+                    return "grey";
+                }
+            })
+            .on("mouseover", function(d) {
+                d3.select(this).style("fill", "blue");
+            })
+            .on("mouseout", function(d) {
+                var import_export_val = dict_country[d.properties.name.toLowerCase()];
+                if (import_export_val !== undefined) {
+                    d3.select(this).style("fill", colorScale(import_export_val));
+                } else {
+                    d3.select(this).style("fill", "grey");
+                }
+            });
+    }
+
+    function sliderChanged() {
+        var sliderValue = document.getElementById("slider").value;
+        var optionLabel = document.getElementById("slider-label");
+
+        if (sliderValue === "0") {
+            optionLabel.textContent = "Import";
+        } else {
+            optionLabel.textContent = "Export";
+        }
+
+        updateMap(parseInt(sliderValue));
+    }
+
+    function updateMap(option) {
+ 
+    var svg = d3.select("#my_dataviz"),
+        width = 800,
+        height = 800;
+
+    svg.selectAll("*").remove();
+
+    var projection = d3.geoMercator()
+        .scale(120)
+        .center([0, 20])
+        .translate([width / 2, height / 2]);
+
+    d3.queue()
+        .defer(d3.json, "https://enjalot.github.io/wwsd/data/world/world-110m.geojson")
+        .await(function(error, topo) {
+            if (error) {
+                throw error;
+            }
+            d3.csv("selected_data.csv", function(error, data) {
+                if (error) {
+                    throw error;
+                }
+                var dict_country = {};
+                data.forEach(function(d) {
+                    var country = d["Country"].toLowerCase();
+                    if (option === 0) {
+                        dict_country[country] = +d["Import"];
+                    } else {
+                        dict_country[country] = +d["Export"];
+                    }
+                });
+                var max = d3.max(Object.values(dict_country));
+                console.log(max);
+                var colorScale = d3.scaleThreshold()
+                    .domain([0, 1000,5000,10000, max])
+                    .range(["blue","#D0E9F6", "#79C0EC", "#0072BC", "#004C7A"]);
+
+                svg.append("g")
+                    .selectAll("path")
+                    .data(topo.features)
+                    .enter().append("path")
+                    .attr("d", d3.geoPath().projection(projection))
+                    .attr("class", function(d) {
+                        return "Country"
+                    })
+                    .style("stroke", "transparent")
+                    .style("fill", function(d) {
+                        var import_export_val = dict_country[d.properties.name.toLowerCase()];
+                        if (import_export_val !== undefined) {
+                            return colorScale(import_export_val);
+                        } else {
+                            return "grey";
+                        }
+                    })
+                    .on("mouseover", function(d) {
+                        d3.select(this).style("fill", "blue");
+                    })
+                    .on("mouseout", function(d) {
+                        var import_export_val = dict_country[d.properties.name.toLowerCase()];
+                        if (import_export_val !== undefined){
+                            d3.select(this).style("fill", colorScale(import_export_val));
+                        }
+                        else{
+                            d3.select(this).style("fill", "gray");
+                        }
+                    });
+            });
+        });
+}
+
+</script>

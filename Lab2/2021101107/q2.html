@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Yearwise Scatter Plot</title>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <style>
+        body {
+            background-color: #b0f7f7;
+        }
+
+        .slider-container {
+            width: 1000px;
+            /* height: 500px; */
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .selected-details {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            fill: black;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Yearwise Scatter Plot</h1>
+    <div class="dropdown">
+        <select id="Yearwise">
+            <option value="X2011">2011</option>
+            <option value="X2012">2012</option>
+            <option value="X2013">2013</option>
+        </select>
+    </div>
+
+    <!-- Filter Slider -->
+    <div class="slider-container">
+        <label for="radius-slider">Filter by Radius (r):</label>
+        <input type="range" id="radius-slider" min="1" max="10" value="1">
+        <span id="radius-value">1</span>
+    </div>
+
+    <svg id="bar-js" height="700" width="1000"></svg>
+    <div id="selected-data-container"></div>
+
+    <script>
+        let dataset = [];
+
+        var svgWidth = 1000,
+            svgHeight = 700;
+
+        var svg = d3.select('svg')
+
+        d3.csv("yearwise.csv", function(data) {
+
+            dataset = data;
+            console.log(dataset);
+
+            draw('X2011')
+
+        });
+
+        svgHeight = svgHeight - 200;
+        svgWidth = svgWidth - 200;
+
+        var xScale = d3.scaleLinear().domain([0, 100]).range([0, svgWidth]);
+        yScale = d3.scaleLinear().domain([0, 100]).range([svgHeight, 0]);
+
+        var g = svg.append("g")
+            .attr("transform", "translate(" + 100 + "," + 100 + ")");
+
+        g.append("g").call(d3.axisBottom(xScale)).attr("transform", "translate(0," + svgHeight + ")");
+        g.append("g").call(d3.axisLeft(yScale));
+
+        g.append("text").attr("id", "text").text("X data").attr("transform", "translate(" + svgWidth / 2 + "," + 550 + ")");
+        g.append("text").attr("id", "text2").text("Yearwise Scatter Plot").attr("transform", "translate(" + svgWidth / 2 + "," + 0 + ")");
+        g.append("text").attr("id", "text3").text("Y data").attr("transform", "translate(" + -50 + "," + svgHeight / 2 + ") rotate(270)");
+        g.append("text").attr("id", "hover").style("visibility", "hidden");
+        g.append("text").attr("id", "placeName").style("visibility", "hidden");
+
+        function draw(value) {
+            var year = value.substring(1);
+
+            const scatterChart = g.selectAll("circle")
+                .data(dataset)
+            var maxp = 0;
+            for (var i = 0; i < dataset.length; i++) {
+                if (maxp < dataset[i]["R" + year]) {
+                    maxp = dataset[i]["R" + year];
+                }
+            }
+            var colorScale = d3.scaleLinear()
+                .domain([0, maxp])
+                .range(["lightgreen", "darkgreen"]);
+
+            scatterChart.enter()
+                .append("circle")
+                .attr("class", "bar")
+                .attr("cx", function(d) {
+                    return xScale(d[value]);
+                })
+                .attr("cy", function(d) {
+                    return yScale(d["Y" + year]);
+                })
+                .attr("r", function(d) {
+                    return d["R" + year]
+                })
+                .style("fill", function(d) {
+                    return colorScale(d["R" + year]);
+                })
+                .on("mouseover", function(d) {
+                    var x = parseInt(d3.select(this).attr("cx")) + 10;
+                    var y = parseInt(d3.select(this).attr("cy"));
+                    var r = parseInt(d3.select(this).attr("r"));
+                    d3.select(this).style("fill", "#fb8500");
+                    d3.select("#hover").text("Center- (" + d[value] + "," + d["Y" + year] + ") Radius:" + d["R" + year]).attr("transform", "translate(" + x + "," + y + ")");
+                    d3.select("#placeName").text("Place: " + d["Name"]).attr("transform", "translate(" + x + "," + (y + 20) + ")");
+                    return d3.selectAll("#hover, #placeName").style("visibility", "visible");
+                })
+                .on("mouseout", function() {
+                    d3.selectAll("#hover, #placeName").style("visibility", "hidden");
+                    d3.select(this).style("fill", d => colorScale(d["R" + year]));
+                });
+
+            updateFilter();
+        }
+
+        document.getElementById("Yearwise").addEventListener('change', function(event) {
+            var value = event.target.value;
+            draw(value);
+        });
+
+        d3.select("#radius-slider").on("input", function() {
+            updateFilter();
+        });
+
+        d3.select("#radius-slider").on("change", function() {
+            updateFilter();
+        });
+        var filteredData = dataset;
+
+        function updateFilter() {
+            var radiusValue = +document.getElementById("radius-slider").value;
+            d3.select("#radius-value").text(radiusValue);
+            var selectedYear = d3.select("#Yearwise").node().value;
+
+            filteredData = dataset.filter(d => d["R" + selectedYear.substring(1)] >= radiusValue);
+            var maxp = 0;
+            for (var i = 0; i < dataset.length; i++) {
+                if (maxp < dataset[i]["R" + selectedYear.substring(1)]) {
+                    maxp = dataset[i]["R" + selectedYear.substring(1)];
+                }
+
+            }
+            var colorScale = d3.scaleLinear()
+                .domain([0, maxp])
+                .range(["lightgreen", "darkgreen"]);
+
+            g.selectAll("circle").remove();
+
+            g.selectAll("circle")
+                .data(filteredData)
+                .enter()
+                .append("circle")
+                .attr("class", "bar")
+                .attr("cx", function(d) {
+                    return xScale(d[selectedYear]);
+                })
+                .attr("cy", function(d) {
+                    return yScale(d["Y" + selectedYear.substring(1)]);
+                })
+                .attr("r", function(d) {
+                    return d["R" + selectedYear.substring(1)];
+                })
+                .style("fill", function(d) {
+                    return colorScale(d["R" + selectedYear.substring(1)]);
+                })
+                .on("mouseover", function(d) {
+                    var x = parseInt(d3.select(this).attr("cx")) + 10;
+                    var y = parseInt(d3.select(this).attr("cy"));
+                    var r = parseInt(d3.select(this).attr("r"));
+                    d3.select(this).style("fill", "#fb8500");
+                    d3.select("#hover").text("Center- (" + d[selectedYear] + "," + d["Y" + selectedYear.substring(1)] + ") Radius:" + d["R" + selectedYear.substring(1)]).attr("transform", "translate(" + x + "," + y + ")");
+                    d3.select("#placeName").text("Place: " + d["Name"]).attr("transform", "translate(" + x + "," + (y + 20) + ")");
+                    return d3.selectAll("#hover, #placeName").style("visibility", "visible");
+                })
+                .on("mouseout", function() {
+                    d3.selectAll("#hover, #placeName").style("visibility", "hidden");
+                    d3.select(this).style("fill", function(d) {
+                        return colorScale(d["R" + selectedYear.substring(1)]);
+                    })
+                });
+        }
+
+        function brushed() {
+            var event = d3.event;
+
+            if (!event.selection) {
+                d3.selectAll(".selected-details").remove();
+                return;
+            }
+            var selectedYear = d3.select("#Yearwise").node().value;
+
+            var [
+                [x0, y0],
+                [x1, y1]
+            ] = event.selection;
+            var selectedData = filteredData.filter(d => {
+                var cx = xScale(+d[selectedYear]);
+                var cy = yScale(+d["Y" + selectedYear.substring(1)]);
+                return cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1;
+            });
+            displaySelectedData(selectedData, selectedYear);
+        }
+
+        function displaySelectedData(data, selectedYear) {
+            var selectedDataContainer = g.selectAll(".selected-details")
+                .data(data)
+                .enter()
+                .append("text")
+                .attr("class", "selected-details")
+                .attr("x", function(d) {
+                    return xScale(d[selectedYear]) + 10;
+                })
+                .attr("y", function(d) {
+                    return yScale(d["Y" + selectedYear.substring(1)]) - 10;
+                })
+                .text(function(d) {
+                    return "X: " + d[selectedYear] + ", Y: " + d["Y" + selectedYear.substring(1)] + ", R:" + d["R" + selectedYear.substring(1)] + ", Name:" + d["Name"];
+                });
+        }
+        var brush = d3.brush()
+            .extent([
+                [0, 0],
+                [svgWidth, svgHeight]
+            ])
+            .on("end", brushed)
+
+        g.append("g")
+            .attr("class", "brush")
+            .call(brush);
+
+
+
+        const zoom = d3.zoom()
+            .scaleExtent([1, 10])
+            .on("zoom", zoomed);
+
+        svg.call(zoom);
+
+        function zoomed() {
+            const {
+                transform
+            } = d3.event;
+            const fontSize = 10 / transform.k;
+            g.attr("transform", transform);
+            g.attr("stroke-width", 1 / transform.k);
+            g.selectAll("text")
+                .style("font-size", fontSize + "px");
+        }
+    </script>
+</body>
+
+</html>

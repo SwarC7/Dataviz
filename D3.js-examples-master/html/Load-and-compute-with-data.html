@@ -1,0 +1,60 @@
+<title>A D3.js example of loading from a data file and cpmputing basic stats</title>
+<head>
+    <script src="http://d3js.org/d3.v4.min.js"></script>
+    <script src="https://raw.githubusercontent.com/tirthajyoti/D3.js-examples/master/html/js/load-data-compute-stats.js"></script>
+    <style>
+        .top {
+            border: solid 2px blue;
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        .code {
+            font-family: monospace;
+            background-color: lightgray;
+            font-weight: 400;
+            font-size: 14;
+        }
+
+        #header-p {
+            font-size: 18;
+        }
+
+        .container {
+            padding-left: 100px;
+            padding-right: 100px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>An example with d3.js for computing basic statistics</a></h1>
+  
+  <div class="top">
+      <p>
+      D3.js is a wonderful JavaScript <a href="https://d3js.org/">visualization library</a>. 
+      In this simple example, however, we are <b>not doing any visualization</b> but only 
+      demonstrating the use of D3 for <b>data-loading</b> and <b>computing basic statistics</b>.
+      <br><br>
+      We are loading the data from a CSV file hosted in a <a href=https://raw.githubusercontent.com/tirthajyoti/D3.js-examples/master/data/data-1.csv>Github repo</a>.  
+      
+    </div>  
+    <p>
+        Click on the button below to load data from a file.
+    </p>
+    <p id="loadData">
+        <button id = "dataLoadBttn" onclick="readData()">Click to load the data from a CSV file</button>
+    </p>
+    <p id="loadDataStatus">
+    </p>
+  
+  <p id="header-p">
+      Click on the button below to compute basic stats.
+  </p>
+ 
+  <button id = "mainBttn" onclick="computeStats()">Click to compute stats...</button>
+  <div class="items">
+  </div>
+</div>
+</body>

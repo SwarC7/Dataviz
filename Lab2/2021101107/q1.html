@@ -1,0 +1,217 @@
+<html>
+
+<head>
+
+
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+
+<body>
+    <form>
+        <label>
+            <input type="radio" name="option" value="2011" onclick="radioClicked(this)"> 2011
+        </label>
+        <label>
+            <input type="radio" name="option" value="2012" onclick="radioClicked(this)"> 2012
+        </label>
+        <label>
+            <input type="radio" name="option" value="2013" onclick="radioClicked(this)"> 2013
+        </label>
+    </form>
+    <svg id="chart" width="600" height="500"></svg>
+    <svg id="chart_scatter" width="600" height="500"></svg>
+    <script>
+        var tooltip = d3.select("body")
+    .append("div")
+    .attr("class", "tooltip")
+    .style("position", "absolute")
+    .style("z-index", "10")
+    .style("visibility", "hidden")
+    .text("");
+        function radioClicked(radioButton) {
+            function addTooltipText(svgElement, name, x, y, r,value_x,value_y) {
+            var tooltipText = svgElement.append("text")
+                .attr("class", "label")
+                .attr("x", x)
+                .attr("y", y - 10)
+                .style("text-anchor", "middle");
+
+            // Split the tooltip content into lines using '\n'
+            var lines = ("Name: " + name + "\nX: " + value_x + "\nY: " + value_y + "\nR: " + r).split('\n');
+
+            // Add each line of text as a separate tspan element
+            tooltipText.selectAll("tspan")
+                .data(lines)
+                .enter().append("tspan")
+                .attr("x", x)
+                .attr("dy", "1.2em") // Set line spacing
+                .text(function(d) { return d; });
+        }
+            var svg = d3.select("#chart"),
+                svgscatter = d3.select('#chart_scatter'),
+                margin = { top: 50, right: 50, bottom: 50, left: 50 },
+                width = svg.attr("width") - margin.left - margin.right,
+                height = svg.attr("height") - margin.top - margin.bottom;
+
+            svg.selectAll("*").remove(); // Clear the previous content
+            svgscatter.selectAll("*").remove();
+            var xScale = d3.scaleBand().range([0, width]).padding(0.4),
+                yScale = d3.scaleLinear().range([height, 0]);
+            var xScale_scatter = d3.scaleLinear().range([0, width]),
+            yScale_scatter = d3.scaleLinear().range([height, 0]);
+            var g = svg.append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            var gScatter = svgscatter.append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            d3.csv("yearwise.csv", function (error, data) {
+                if (error) {
+                    throw error;
+                }
+
+                var name_list = [];
+                var x_list = [];
+                var y_list = [];
+                var r_list=[];
+
+                var x_value = "X" + radioButton.value;
+                var y_value = "Y" + radioButton.value;
+                var r_value="R"+radioButton.value;
+                data.forEach(function (d) {
+                    name_list.push(d.Name);
+                    x_list.push(+d[x_value]);
+                    y_list.push(+d[y_value]);
+                    r_list.push(+d[r_value]);
+                });
+
+                xScale.domain(name_list);
+                yScale.domain([0, d3.max(y_list)]);
+                xScale_scatter.domain([0,d3.max(x_list)]);
+                yScale_scatter.domain([0, d3.max(y_list)]);
+                console.log("xScale1 domain:", xScale_scatter.domain());
+                console.log("x_list:", x_list);
+
+                g.selectAll(".bar")
+                    .data(y_list)
+                    .enter().append("rect")
+                    .attr("class", "bar")
+                    .attr("x", function (_, i) {
+                        return xScale(name_list[i]);
+                    })
+                    .attr("y", function (d) {
+                        return yScale(d);
+                    })
+                    .attr("width", xScale.bandwidth())
+                    .attr("height", function (d) {
+                        return height - yScale(d);
+                    })
+                    .on("mouseover", function(_, i) {
+                    // Show tooltip on mouseover
+                    g.select(".bar:nth-child(" + (i + 1) + ")")
+                        .attr("fill", "red");
+                    gScatter.select(".dot:nth-child(" + (i + 1) + ")")
+                        .attr("fill", "red"); // Revert to original color
+
+                    addTooltipText(g, name_list[i], xScale(name_list[i]) + xScale.bandwidth() / 2, yScale(y_list[i]), r_list[i],x_list[i],y_list[i]);
+                    addTooltipText(gScatter, name_list[i], xScale_scatter(x_list[i]), yScale_scatter(y_list[i]), r_list[i],x_list[i],y_list[i]);
+
+
+                })
+                .on("mouseout", function(_,i) {
+                    // Hide tooltip on mouseout
+                    tooltip.style("visibility", "hidden");
+                    g.select(".bar:nth-child(" + (i + 1) + ")")
+                        .attr("fill", "black");
+                    gScatter.select(".dot:nth-child(" + (i + 1) + ")")
+                        .attr("fill", "black"); // Revert to original color
+                    g.select(".label").remove();
+                    gScatter.select(".label").remove();
+                });
+
+                // Draw x axis
+                g.append("g")
+                    .attr("class", "x axis")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(d3.axisBottom(xScale));
+
+                // Draw y axis
+                g.append("g")
+                    .attr("class", "y axis")
+                    .call(d3.axisLeft(yScale));
+
+                // Add x axis label
+                svg.append("text")
+                    .attr("transform", "translate(" + (width / 2) + " ," + (height + margin.top + 50) + ")")
+                    .style("text-anchor", "middle")
+                    .text("Names");
+
+                // Add y axis label
+                svg.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", margin.left / 2 - 20)
+                    .attr("x", 0 - (height / 2))
+                    .attr("dy", "1em")
+                    .style("text-anchor", "middle")
+                    .text("Values");
+                gScatter.selectAll(".dot")
+                    .data(y_list)
+                    .enter().append("circle")
+                    .attr("class", "dot")
+                    .attr("cx", function (_, i) {
+                        console.log(xScale_scatter(+(x_list[i])));
+                        return xScale_scatter(+(x_list[i]));
+                    })
+                    .attr("cy", function (_, i) {
+                        return yScale_scatter(+y_list[i]);
+                    })
+                    .attr("r", function (_, i) {
+                        return r_list[i];
+                    })
+                    .on("mouseover", function(_, i) {
+                    // Show tooltip on mouseover
+                    g.select(".bar:nth-child(" + (i + 1) + ")")
+                        .attr("fill", "red");
+                    gScatter.select(".dot:nth-child(" + (i + 1) + ")")
+                        .attr("fill", "red"); // Revert to original color
+                    addTooltipText(g, name_list[i], xScale(name_list[i]) + xScale.bandwidth() / 2, yScale(y_list[i]), r_list[i],x_list[i],y_list[i]);
+                    addTooltipText(gScatter, name_list[i], xScale_scatter(x_list[i]), yScale_scatter(y_list[i]), r_list[i],x_list[i],y_list[i]);
+                })
+            
+                .on("mouseout", function(_,i) {
+                    // Hide tooltip on mouseout
+                    g.select(".bar:nth-child(" + (i + 1) + ")")
+                        .attr("fill", "black");
+                    gScatter.select(".dot:nth-child(" + (i + 1) + ")")
+                        .attr("fill", "black"); // Revert to original color
+                    g.select(".label").remove();
+                    gScatter.select(".label").remove();
+                });
+
+                gScatter.append("g")
+                    .attr("class", "x axis")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(d3.axisBottom(xScale_scatter));
+
+                gScatter.append("g")
+                    .attr("class", "y axis")
+                    .call(d3.axisLeft(yScale_scatter));
+
+                svgscatter.append("text")
+                    .attr("transform", "translate(" + (width / 2) + " ," + (height + margin.top + 50) + ")")
+                    .style("text-anchor", "middle")
+                    .text("X-values");
+
+                svgscatter.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", margin.left / 2 - 20)
+                    .attr("x", 0 - (height / 2))
+                    .attr("dy", "1em")
+                    .style("text-anchor", "middle")
+                    .text("Y-values");
+                
+
+            });
+        }
+    </script>
+</body>
+
+</html>
